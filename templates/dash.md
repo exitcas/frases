@@ -1,4 +1,4 @@
-# Las Frases&trade;
+# [Las Frases&trade;](/{{ext}})
 
 |Frase|Nombre|Acciones|
 |-----|------|--------|

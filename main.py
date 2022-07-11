@@ -5,6 +5,7 @@ from markdown import markdown
 from random import randint
 
 app = Flask("")
+mobile = '<meta name="viewport" content="width=device-width" />'
 
 configf = open("config.json", "r")
 config = json.loads(configf.read())
@@ -19,15 +20,25 @@ def html():
   fdb = open("frases.json", "r")
   frases = json.loads(fdb.read())
   fdb.close()
-  return markdown(render_template("index.md", frase=frases[randint(0, len(frases)-1)]))
+  frase=frases[randint(0, len(frases)-1)]
+  if frase["autor"]:
+    autor = frase["autor"]
+  else:
+    autor = "Anónimo"
+  return mobile + markdown(render_template("index.md", frase=frase["frase"], autor=autor, ext="", warning=""))
 
 @app.route("/.md")
 def md():
   fdb = open("frases.json", "r")
   frases = json.loads(fdb.read())
   fdb.close()
-  resp = make_response(render_template("index.md", frase=frases[randint(0, len(frases)-1)]))
-  resp.headers["Content-Type"] = "text/markdown"
+  frase=frases[randint(0, len(frases)-1)]
+  if frase["autor"]:
+    autor = frase["autor"]
+  else:
+    autor = "Anónimo"
+  resp = make_response(render_template("index.md", frase=frase["frase"], autor=autor, ext=".md", warning=" (HTML)"))
+  resp.headers["Content-Type"] = "text/markdown; charset=utf-8"
   return resp
 
 
@@ -36,12 +47,12 @@ def md():
 
 @app.route("/api")
 def apihtml():
-  return markdown(render_template("json.md"))
+  return mobile + markdown(render_template("json.md", ext=""))
 
 @app.route("/api.md")
 def apimd():
-  resp = make_response(render_template("json.md"))
-  resp.headers["Content-Type"] = "text/markdown"
+  resp = make_response(render_template("json.md", ext=".md"))
+  resp.headers["Content-Type"] = "text/markdown; charset=utf-8"
   return resp
 
 @app.route("/.json")
@@ -49,7 +60,8 @@ def apijson():
   fdb = open("frases.json", "r")
   frases = json.loads(fdb.read())
   fdb.close()
-  return jsonify(frase=frases[randint(0, len(frases)-1)])
+  frase = frases[randint(0, len(frases)-1)]
+  return jsonify(frase=frase["frase"], autor=frase["autor"])
 
 @app.route("/all.json")
 def apialljson():
@@ -64,7 +76,7 @@ def apixml():
   frases = json.loads(fdb.read())
   fdb.close()
   resp = make_response('<?xml version="1.0" encoding="UTF-8"?>\n<frase>' + frases[randint(0, len(frases)-1)] + '</frase>')
-  resp.headers["Content-Type"] = "application/xml"
+  resp.headers["Content-Type"] = "application/xml; charset=utf-8"
   return resp
 
 @app.route("/all.xml")
@@ -77,7 +89,7 @@ def apiallxml():
     xml += '\n<frase>' + x + '</frase>'
   xml += '\n</lista>'
   resp = make_response(xml)
-  resp.headers["Content-Type"] = "application/xml"
+  resp.headers["Content-Type"] = "application/xml; charset=utf-8"
   return resp
 
 
@@ -102,7 +114,27 @@ def sugerir():
       error = ":D"
   else:
     error = ""
-  return markdown(render_template("sugerir.md", error=error))
+  return mobile + markdown(render_template("sugerir.md", error=error))
+
+@app.route("/sugerir/beta", methods=["GET", "POST"])
+def sugerirbeta():
+  if request.method == "POST":
+    try:
+      frase = str(request.form["frase"]).replace("|", "&#124;")
+      if "nombre" in request.form and request.form["nombre"]:
+        nombre = str(request.form["nombre"]).replace("|", "&#124;")
+      else:
+        nombre = False
+      try:
+        db["sugerencias"].append([frase, nombre])
+      except:
+        db["sugerencias"] = [[frase, nombre]]
+      error = ""
+    except:
+      error = ":D"
+  else:
+    error = ""
+  return mobile + markdown(render_template("sugerirbeta.md", error=error))
 
 
 
@@ -128,7 +160,7 @@ def sugerencias():
       else: nombre = x[1]
       tabla += f"|{x[0]}|{nombre}|[Add](/dash/sugerencias/add/{str(i)}) [Del](/dash/sugerencias/remove/{str(i)})|\n"
       i = i+1
-    return markdown(render_template("dash.md", tabla=tabla), extensions=["tables"])
+    return mobile + markdown(render_template("dash.md", tabla=tabla), extensions=["tables"])
   else:
     return "<h1>Restrictred</h1>"
 
@@ -148,7 +180,7 @@ def sugerenciasadd(id):
     fdb = open("frases.json", "r")
     frases = json.loads(fdb.read())
     fdb.close()
-    frases.append(db["sugerencias"][int(id)][0])
+    frases.append({"frase": db["sugerencias"][int(id)][0], "autor": db["sugerencias"][int(id)][1]})
     fdb = open("frases.json", "w")
     fdb.write(json.dumps(frases))
     del db["sugerencias"][int(id)]

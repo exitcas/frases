@@ -1,4 +1,5 @@
 # API
+de [Las Frases&trade;](/{{ext}})
 
 ## Rutas
 - [GET] `/.<json|xml>`
